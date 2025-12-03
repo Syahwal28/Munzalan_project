@@ -35,8 +35,8 @@
         {{-- BLOK TOMBOL EXPORT --}}
         <div class="d-flex gap-2">
             <h6 class="m-0 fw-bold text-purple-dark me-2">Tabel Data Aset</h6>
-            <a href="{{ route('assets.export.excel') . (request()->has('search') ? '?search=' . request('search') : '') }}" class="btn btn-sm btn-success text-white">
-                <i class="fas fa-file-excel me-1"></i> Excel
+            <a href="{{ route('assets.export.csv') . (request()->has('search') ? '?search=' . request('search') : '') }}" class="btn btn-sm btn-success text-white">
+                <i class="fas fa-file-excel me-1"></i> Excel (CSV)
             </a>
             <a href="{{ route('assets.export.pdf') . (request()->has('search') ? '?search=' . request('search') : '') }}" class="btn btn-sm btn-danger text-white">
                 <i class="fas fa-file-pdf me-1"></i> PDF

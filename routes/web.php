@@ -45,6 +45,6 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('perbaikan', PerbaikanController::class);
 
     // Route untuk Export
-    Route::get('export/excel', [AsetController::class, 'exportExcel'])->name('assets.export.excel');
+    Route::get('export/csv', [AsetController::class, 'exportCsv'])->name('assets.export.csv');
     Route::get('export/pdf', [AsetController::class, 'exportPdf'])->name('assets.export.pdf');
 });

@@ -223,14 +223,102 @@ class AsetController extends Controller
     /**
      * Export data aset ke format Excel.
      */
-    public function exportExcel(Request $request)
+    public function exportCsv(Request $request)
     {
         $search = $request->get('search');
-        
-        // Menggunakan class Export khusus
-        return Excel::download(new AsetExport($search), 'data_aset_munzalan.xlsx');
-    }
+        $fileName = 'data_aset_munzalan_' . now()->format('Ymd_His') . '.csv';
 
+        // 1. Ambil Data Agregasi (Mirip dengan query di view Anda)
+        $query = AsetModel::select('kode_aset', 'nama_barang', 'kategori', 'sumber_aset', 'penanggung_jawab', 'lokasi', 'satuan')
+                        ->selectRaw('SUM(jumlah) as total_stok')
+                        ->selectRaw('SUM(CASE WHEN kondisi = "Baik" THEN jumlah ELSE 0 END) as stok_baik')
+                        ->selectRaw('SUM(CASE WHEN kondisi = "Rusak Ringan" THEN jumlah ELSE 0 END) as stok_rusak_ringan')
+                        ->selectRaw('SUM(CASE WHEN kondisi = "Rusak Berat" THEN jumlah ELSE 0 END) as stok_rusak_berat')
+                        ->groupBy('kode_aset', 'nama_barang', 'kategori', 'sumber_aset', 'penanggung_jawab', 'lokasi', 'satuan');
+                        
+        if ($search) {
+            $query->where('nama_barang', 'like', '%' . $search . '%')
+                ->orWhere('kode_aset', 'like', '%' . $search . '%')
+                ->orWhere('kategori', 'like', '%' . $search . '%')
+                ->orWhere('lokasi', 'like', '%' . $search . '%');
+        }
+        
+        $assets = $query->get();
+
+        // 2. Tentukan Headers HTTP
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        // 3. Siapkan Kolom (Headings)
+        $columns = [
+            'KODE ASET', 
+            'NAMA ASET', 
+            'KATEGORI', 
+            'SUMBER', 
+            'PJ', 
+            'LOKASI', 
+            'TOTAL STOK', 
+            'BAIK', 
+            'RUSAK RINGAN', 
+            'RUSAK BERAT'
+        ];
+        
+        // 4. Buat Callback untuk Streaming Data
+        $callback = function() use ($assets, $columns) {
+            $file = fopen('php://output', 'w');
+            
+            // Output Headings
+            // Menggunakan semicolon (;) sebagai delimiter agar Excel Indonesia membaca format kolom dengan benar
+            fputcsv($file, $columns, ';'); 
+            
+            foreach ($assets as $item) {
+                fputcsv($file, [
+                    $item->kode_aset,
+                    $item->nama_barang,
+                    $item->kategori,
+                    $item->sumber_aset,
+                    $item->penanggung_jawab,
+                    $item->lokasi,
+                    $item->total_stok . ' ' . $item->satuan, // Total Stok
+                    $item->stok_baik . ' ' . $item->satuan,
+                    $item->stok_rusak_ringan . ' ' . $item->satuan,
+                    $item->stok_rusak_berat . ' ' . $item->satuan,
+                ], ';');
+            }
+
+            // --- TAMBAHKAN BARIS TOTAL KESELURUHAN (Sama seperti yang Anda minta) ---
+            $grandTotalStok = $assets->sum('total_stok');
+            $grandTotalBaik = $assets->sum('stok_baik');
+            $grandTotalRusakRingan = $assets->sum('stok_rusak_ringan');
+            $grandTotalRusakBerat = $assets->sum('stok_rusak_berat');
+            
+            // Baris Kosong
+            fputcsv($file, [''], ';');
+
+            // Baris Total
+            fputcsv($file, [
+                'TOTAL KESELURUHAN', // Kolom 1
+                '', // Kolom 2
+                '', // Kolom 3
+                '', // Kolom 4
+                '', // Kolom 5
+                '', // Kolom 6 (Gabungan kolom di Excel)
+                $grandTotalStok, 
+                $grandTotalBaik, 
+                $grandTotalRusakRingan, 
+                $grandTotalRusakBerat,
+            ], ';');
+
+            fclose($file);
+        };
+        
+        return response()->stream($callback, 200, $headers);
+    }
     /**
      * Export data aset ke format PDF.
      */
