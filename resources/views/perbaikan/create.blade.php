@@ -64,13 +64,12 @@
 
                     {{-- PILIH ASET --}}
                     <div class="mb-4">
-                        <label class="form-label fw-semibold text-purple-dark">Pilih Barang <span class="text-danger">*</span></label>
-                        <select name="aset_id" id="asetSelect" class="form-select @error('aset_id') is-invalid @enderror" onchange="updateMaxStok()">
-                            <option value="">-- Cari Barang --</option>
-                            @foreach($assets as $item)
-                                {{-- Simpan data stok di atribut data-stok agar bisa dibaca JS --}}
-                                <option value="{{ $item->id }}" data-stok="{{ $item->jumlah }}" {{ old('aset_id') == $item->id ? 'selected' : '' }}>
-                                    {{ $item->kode_aset }} - {{ $item->nama_barang }} (Stok: {{ $item->jumlah }} {{ $item->satuan }})
+                        <label class="form-label fw-semibold text-purple-dark">Pilih Aset <span class="text-danger">*</span></label>
+                        <select name="aset_id" id="asetSelect" class="form-select select2 @error('aset_id') is-invalid @enderror" onchange="updateMaxStok()">
+                            <option value="">-- Cari Aset --</option>
+                            @foreach($assets as $aset)
+                                <option value="{{ $aset->id }}">
+                                    {{ $aset->kode_aset }} - {{ $aset->nama_barang }} ({{ $aset->kondisi }} - Stok: {{ $aset->jumlah }})
                                 </option>
                             @endforeach
                         </select>

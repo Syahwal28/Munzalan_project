@@ -3,29 +3,101 @@
 namespace App\Http\Controllers;
 
 use App\Models\AsetModel;
-use App\Exports\AsetExport;
+use App\Models\Perbaikan;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
-use Maatwebsite\Excel\Facades\Excel;
 
 class AsetController extends Controller
 {
     /**
      * Menampilkan daftar aset (Dikelompokkan per Kode Aset)
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Mengambil data dan GROUP BY kode_aset agar di tabel tampil 1 baris per item
-        // Kita ambil MAX(id) untuk keperluan tombol Edit/Hapus
-        $assets = AsetModel::select('kode_aset', 'nama_barang', 'kategori', 'sumber_aset', 'lokasi', 'penanggung_jawab', 'satuan')
-                    ->selectRaw('MAX(id) as id') 
-                    ->selectRaw('SUM(jumlah) as total_stok') // Opsional: untuk debug query
-                    ->groupBy('kode_aset', 'nama_barang', 'kategori', 'sumber_aset', 'lokasi', 'penanggung_jawab', 'satuan')
-                    ->latest('created_at')
-                    ->paginate(10);
+        // 1. QUERY DASAR (Persiapan Filter)
+        $query = AsetModel::select('kode_aset', 'nama_barang', 'kategori', 'sumber_aset', 'lokasi', 'penanggung_jawab', 'satuan');
 
-        return view('aset.index', compact('assets'));
+        // --- FILTER PENCARIAN (Search) ---
+        if ($request->filled('search')) {
+            $query->where(function($q) use ($request) {
+                $q->where('nama_barang', 'like', '%'.$request->search.'%')
+                  ->orWhere('kode_aset', 'like', '%'.$request->search.'%');
+            });
+        }
+
+        // --- FILTER KATEGORI ---
+        if ($request->filled('kategori')) {
+            $query->where('kategori', $request->kategori);
+        }
+
+        // FILTER PENANGGUNG JAWAB 
+        if ($request->filled('penanggung_jawab')) {
+            $query->where('penanggung_jawab', $request->penanggung_jawab);
+        }
+
+        // FILTER LOKASI
+        if ($request->filled('lokasi')) {
+            $query->where('lokasi', $request->lokasi);
+        }
+
+        // FILTER KONDISI 
+        if ($request->filled('kondisi')) {
+            $query->where('kondisi', $request->kondisi);
+        }
+
+        // 2. EKSEKUSI QUERY (Grouping & Pagination)
+        $assets = $query->selectRaw('MAX(id) as id') 
+                        ->groupBy('kode_aset', 'nama_barang', 'kategori', 'sumber_aset', 'lokasi', 'penanggung_jawab', 'satuan')
+                        ->orderByRaw('MAX(created_at) DESC') // Fix Strict Mode MySQL
+                        ->paginate(10)
+                        ->withQueryString(); // Agar filter tidak hilang saat klik halaman 2
+
+        // 3. LOGIKA PERHITUNGAN (TRANSFORMASI DATA)
+        // Kita suntikkan data tambahan ke dalam object assets, agar View tinggal cetak.
+        $assets->getCollection()->transform(function ($item) {
+            
+            // Ambil semua varian data berdasarkan Kode Aset yang sama
+            $allVariants = AsetModel::where('kode_aset', $item->kode_aset)->get();
+            $variantIds  = $allVariants->pluck('id'); 
+
+            // A. Hitung Stok Fisik (Database)
+            // Total Stok = Jumlah semua kondisi (Baik + Rusak)
+            $item->total_stok = $allVariants->sum('jumlah');
+            
+            // Rincian per Kondisi
+            $item->stok_baik         = $allVariants->where('kondisi', 'Baik')->sum('jumlah');
+            $item->stok_rusak_ringan = $allVariants->where('kondisi', 'Rusak Ringan')->sum('jumlah');
+            $item->stok_rusak_berat  = $allVariants->where('kondisi', 'Rusak Berat')->sum('jumlah');
+
+            // B. Hitung yang Sedang Diperbaiki (Service)
+            // Mengambil dari tabel Perbaikan yang statusnya 'Proses'
+            $item->sedang_diperbaiki = Perbaikan::whereIn('aset_id', $variantIds)
+                                                ->where('status', 'Proses')
+                                                ->sum('jumlah_perbaikan');
+
+            // C. Hitung Total Aset Keseluruhan (Gudang + Service)
+            // (Opsional: Jika ingin menampilkan total kepemilikan yayasan)
+            // Karena logika kita sebelumnya stok TIDAK dikurangi saat servis, 
+            // maka total_stok di atas sudah mencakup yang sedang diservis (jika stok fisik belum dikurangi).
+            // Tapi jika stok fisik dikurangi, rumusnya: $item->total_stok + $item->sedang_diperbaiki.
+            
+            return $item;
+        });
+        $totalJenisAset = AsetModel::where('jumlah', '>', 0)
+                                   ->distinct('kode_aset')
+                                   ->count('kode_aset');
+        // QUERY UNTUK DROPDOWN FILTER
+        // Kita ambil data unik untuk mengisi opsi di Select2
+        $dataLokasi = AsetModel::select('lokasi')->distinct()->pluck('lokasi');
+        $dataKategori = AsetModel::select('kategori')->distinct()->pluck('kategori');
+        $dataPJ     = AsetModel::select('penanggung_jawab')->distinct()->pluck('penanggung_jawab');
+        $dataAsetList = AsetModel::select('kode_aset', 'nama_barang')
+                                 ->distinct('kode_aset')
+                                 ->orderBy('kode_aset')
+                                 ->get();
+
+        return view('aset.index', compact('assets', 'dataLokasi','dataKategori', 'dataPJ', 'dataAsetList','totalJenisAset'));
     }
 
     /**
@@ -42,20 +114,20 @@ class AsetController extends Controller
      */
     public function edit($id)
     {
-        // Cari aset berdasarkan ID
+        // 1. Ambil DATA UTAMA (Single Object)
+        // Ini digunakan untuk mengisi field: Nama, Kode, Kategori, Lokasi, PJ
         $asset = AsetModel::findOrFail($id);
-        
-        // Kita juga perlu mengirim semua varian dengan kode yang sama ke view
-        // agar bisa ditampilkan di tabel input dinamis (looping).
-        // (Ini penting untuk fitur edit sekaligus yang baru kita buat)
-        
-        // Namun, di view edit yang baru, kita menggunakan logic:
-        // $variants = \App\Models\AsetModel::where('kode_aset', $asset->kode_aset)->get();
-        // Jadi cukup kirim $asset saja sudah cukup, karena view akan query sendiri (atau bisa kita query disini biar rapi).
-        
-        return view('aset.edit', compact('asset'));
-    }
 
+        // 2. Ambil DATA VARIAN (Collection)
+        // Ini digunakan untuk looping form: Jumlah & Kondisi
+        $variants = AsetModel::where('kode_aset', $asset->kode_aset)
+                           ->where('jumlah', '>', 0) // Filter stok > 0
+                           ->orderBy('id')
+                           ->get();
+
+        // Kirim kedua variabel ke view
+        return view('aset.edit', compact('asset', 'variants'));
+    }
     /**
      * Menyimpan data baru ke database (Batch Input)
      */
@@ -150,6 +222,7 @@ class AsetController extends Controller
         // Hapus data yang dihapus user di form
         AsetModel::where('kode_aset', $kodeAset)
                  ->whereNotIn('id', $submittedIds)
+                 ->where('jumlah', '>', 0)
                  ->delete();
 
         foreach ($request->details as $detail) {
@@ -191,11 +264,35 @@ class AsetController extends Controller
      */
     public function show($id)
     {
-        // Cari aset berdasarkan ID
-        $asset = AsetModel::findOrFail($id);
-        
-        // Tampilkan view detail
-        return view('aset.show', compact('asset'));
+        // Cari data aset berdasarkan ID dari QR Code
+        $scannedAsset = AsetModel::findOrFail($id);
+
+        // AMBIL DATA REALTIME (Berdasarkan Kode Aset)
+        // Kita tidak hanya terpaku pada ID yang discan, tapi mencari 'saudara-saudaranya'
+        // yang memiliki kode aset sama.
+        $allVariants = AsetModel::where('kode_aset', $scannedAsset->kode_aset)->get();
+
+        // 3. HITUNG STATISTIK REALTIME
+        $summary = [
+            'nama_barang'      => $scannedAsset->nama_barang, // Ambil nama dari yg discan
+            'kode_aset'        => $scannedAsset->kode_aset,
+            'kategori'         => $scannedAsset->kategori,
+            'lokasi_utama'     => $scannedAsset->lokasi,
+            'pj_utama'         => $scannedAsset->penanggung_jawab,
+            
+            // Hitung Stok
+            'total_stok'       => $allVariants->sum('jumlah'),
+            'stok_baik'        => $allVariants->where('kondisi', 'Baik')->sum('jumlah'),
+            'stok_rusak_ringan'=> $allVariants->where('kondisi', 'Rusak Ringan')->sum('jumlah'),
+            'stok_rusak_berat' => $allVariants->where('kondisi', 'Rusak Berat')->sum('jumlah'),
+            
+            // Cek Service
+            'sedang_servis'    => Perbaikan::whereIn('aset_id', $allVariants->pluck('id'))
+                                                       ->where('status', 'Proses')
+                                                       ->sum('jumlah_perbaikan'),
+        ];
+
+        return view('aset.show', compact('scannedAsset', 'summary'));
     }
 
     /**
@@ -229,12 +326,14 @@ class AsetController extends Controller
         $fileName = 'data_aset_munzalan_' . now()->format('Ymd_His') . '.csv';
 
         // 1. Ambil Data Agregasi (Mirip dengan query di view Anda)
-        $query = AsetModel::select('kode_aset', 'nama_barang', 'kategori', 'sumber_aset', 'penanggung_jawab', 'lokasi', 'satuan')
+        $query = AsetModel::select('kode_aset', 'nama_barang', 'kategori', 'keterangan', 'sumber_aset', 
+                                   'penanggung_jawab', 'lokasi', 'satuan', 'tanggal_perolehan', 'harga_perolehan')
                         ->selectRaw('SUM(jumlah) as total_stok')
                         ->selectRaw('SUM(CASE WHEN kondisi = "Baik" THEN jumlah ELSE 0 END) as stok_baik')
                         ->selectRaw('SUM(CASE WHEN kondisi = "Rusak Ringan" THEN jumlah ELSE 0 END) as stok_rusak_ringan')
                         ->selectRaw('SUM(CASE WHEN kondisi = "Rusak Berat" THEN jumlah ELSE 0 END) as stok_rusak_berat')
-                        ->groupBy('kode_aset', 'nama_barang', 'kategori', 'sumber_aset', 'penanggung_jawab', 'lokasi', 'satuan');
+                        ->groupBy('kode_aset', 'nama_barang', 'kategori', 'keterangan', 'sumber_aset', 'penanggung_jawab', 
+                                  'lokasi', 'satuan', 'tanggal_perolehan', 'harga_perolehan');
                         
         if ($search) {
             $query->where('nama_barang', 'like', '%' . $search . '%')
@@ -256,16 +355,19 @@ class AsetController extends Controller
 
         // 3. Siapkan Kolom (Headings)
         $columns = [
-            'KODE ASET', 
+            'NO INVENTARIS', 
             'NAMA ASET', 
             'KATEGORI', 
+            'KETERANGAN/SPESIFIKASI', 
             'SUMBER', 
             'PJ', 
             'LOKASI', 
             'TOTAL STOK', 
             'BAIK', 
             'RUSAK RINGAN', 
-            'RUSAK BERAT'
+            'RUSAK BERAT',
+            'TANGGAL PEROLEHAN',
+            'HARGA PEROLEHAN'
         ];
         
         // 4. Buat Callback untuk Streaming Data
@@ -281,6 +383,7 @@ class AsetController extends Controller
                     $item->kode_aset,
                     $item->nama_barang,
                     $item->kategori,
+                    $item->keterangan,
                     $item->sumber_aset,
                     $item->penanggung_jawab,
                     $item->lokasi,
@@ -288,6 +391,8 @@ class AsetController extends Controller
                     $item->stok_baik . ' ' . $item->satuan,
                     $item->stok_rusak_ringan . ' ' . $item->satuan,
                     $item->stok_rusak_berat . ' ' . $item->satuan,
+                    $item->tanggal_perolehan,
+                    $item->harga_perolehan,
                 ], ';');
             }
 
@@ -307,7 +412,8 @@ class AsetController extends Controller
                 '', // Kolom 3
                 '', // Kolom 4
                 '', // Kolom 5
-                '', // Kolom 6 (Gabungan kolom di Excel)
+                '', // Kolom 6 
+                '', // Kolom 7 (Gabungan kolom di Excel)
                 $grandTotalStok, 
                 $grandTotalBaik, 
                 $grandTotalRusakRingan, 
@@ -327,8 +433,10 @@ class AsetController extends Controller
         $search = $request->get('search');
         
         // Ambil data berdasarkan pencarian
-        $query = AsetModel::select('kode_aset', 'nama_barang', 'kategori', 'lokasi', 'penanggung_jawab', 'jumlah', 'satuan')
-                         ->groupBy('kode_aset', 'nama_barang', 'kategori', 'lokasi', 'penanggung_jawab', 'jumlah', 'satuan');
+        $query = AsetModel::select('kode_aset', 'nama_barang', 'kategori', 'keterangan', 'lokasi', 
+                                   'penanggung_jawab', 'jumlah', 'satuan','tanggal_perolehan', 'harga_perolehan')
+                         ->groupBy('kode_aset', 'nama_barang', 'kategori', 'keterangan', 'lokasi', 
+                                   'penanggung_jawab', 'jumlah', 'satuan', 'tanggal_perolehan', 'harga_perolehan');
                          
         if ($search) {
             $query->where('nama_barang', 'like', '%' . $search . '%')

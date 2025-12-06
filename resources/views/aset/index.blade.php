@@ -13,48 +13,125 @@
                 <div>
                     <div class="inv-hero-kicker mb-1">Munzalan Inventory System</div>
                     <h2 class="inv-hero-title mb-1">Daftar Aset & Inventaris</h2>
-                    <p class="inv-hero-subtitle mb-0">Kelola seluruh data aset lahan, bangunan, dan barang yayasan di sini.</p>
+                    <p class="inv-hero-subtitle mb-0">Kelola seluruh data aset lahan, bangunan, dan barang yayasan.</p>
                 </div>
             </div>
             <div class="text-end">
-                @auth
-                <a href="{{ route('aset.create') }}" class="btn btn-light text-purple fw-bold rounded-pill shadow-sm mb-2">
-                    <i class="fas fa-plus me-1"></i> Tambah Aset Baru
-                </a>
-                @endauth
-                <div class="small inv-hero-muted text-end">Total Aset: {{ $assets->total() }} Item</div>
+                {{-- Fungsi Pembatas Akses (hanya untuk admin) --}}
+                @if(Auth::user()->role_user == 'admin')
+                    <a href="{{ route('assets.create') }}" class="btn btn-light text-purple fw-bold rounded-pill shadow-sm mb-2">
+                        <i class="fas fa-plus me-1"></i> Tambah Aset Baru
+                    </a>
+                @endif
+                <div class="small inv-hero-muted text-end">Total Aset: {{ $totalJenisAset }} Item</div>
             </div>
         </div>
+    </div>
+</div>
+
+{{-- FILTER CARD (BARU) --}}
+<div class="card card-custom mb-4 border-0 shadow-sm">
+    <div class="card-body py-3">
+        <form action="{{ route('assets.index') }}" method="GET">
+            <div class="row g-3 align-items-end">
+                
+                {{-- SEARCH: KODE / NAMA ASET (SELECT2) --}}
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">Cari Aset</label>
+                        <select name="search" id="filterSearch" class="form-select border-start-0">
+                            <option value="">Semua Aset</option>
+                            @foreach($dataAsetList as $aset)
+                                {{-- Value kita set Kode Aset, Tampilan kita gabung Kode - Nama --}}
+                                <option value="{{ $aset->kode_aset }}" 
+                                    {{ request('search') == $aset->kode_aset ? 'selected' : '' }}>
+                                    {{ $aset->kode_aset }} - {{ $aset->nama_barang }}
+                                </option>
+                            @endforeach
+                        </select>
+                </div>
+
+                {{-- FILTER: PENANGGUNG JAWAB (SELECT2) --}}
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">Penanggung Jawab</label>
+                    <select name="penanggung_jawab" id="filterPJ" class="form-select select2-init" data-placeholder="Semua PJ">
+                        <option value="">Semua PJ</option>
+                        @foreach($dataPJ as $pj)
+                            <option value="{{ $pj }}" {{ request('penanggung_jawab') == $pj ? 'selected' : '' }}>{{ $pj }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- FILTER: KONDISI (DROPDOWN BIASA) --}}
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold text-muted">Kondisi</label>
+                    <select name="kondisi" class="form-select border-purple-light">
+                        <option value="">Semua Kondisi</option>
+                        <option value="Baik" {{ request('kondisi') == 'Baik' ? 'selected' : '' }}>Baik</option>
+                        <option value="Rusak Ringan" {{ request('kondisi') == 'Rusak Ringan' ? 'selected' : '' }}>Rusak Ringan</option>
+                        <option value="Rusak Berat" {{ request('kondisi') == 'Rusak Berat' ? 'selected' : '' }}>Rusak Berat</option>
+                    </select>
+                </div>
+
+                {{-- Filter Kategori (Select2) --}}
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold text-muted">Filter Kategori</label>
+                    <select name="kategori" id="filterKategori" class="form-select select2-init" data-placeholder="Semua Kategori">
+                        <option value="">Semua Kategori</option>
+                        @foreach($dataKategori as $kat)
+                            <option value="{{ $kat }}" {{ request('kategori') == $kat ? 'selected' : '' }}>{{ $kat }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Filter Lokasi (Select2) --}}
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold text-muted">Filter Lokasi</label>
+                    <select name="lokasi" id="filterLokasi" class="form-select select2-init" data-placeholder="Semua Lokasi">
+                        <option value="">Semua Lokasi</option>
+                        @foreach($dataLokasi as $loc)
+                            <option value="{{ $loc }}" {{ request('lokasi') == $loc ? 'selected' : '' }}>{{ $loc }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Tombol Filter --}}
+               <div class="col-12 d-flex justify-content-center gap-3">
+                    {{-- Tombol Filter --}}
+                    <div class="col-md-1 d-grid">
+                        <button type="submit" class="btn btn-primary fw-bold" style="background-color: #883C8C; border-color: #883C8C;">
+                            <i class="fas fa-filter me-1"></i> Filter
+                        </button>
+                    </div>
+
+                    @if(request()->anyFilled(['search', 'kategori', 'lokasi','kondisi','penanggung_jawab']))
+                        <div class="col-md-1 d-grid">
+                            <a href="{{ route('assets.index') }}" class="btn btn-light text-danger fw-bold border">
+                                <i class="fas fa-undo me-1"></i> Reset
+                            </a>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </form>
     </div>
 </div>
 
 {{-- TABEL DATA --}}
 <div class="card card-custom mb-4">
     <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom-purple-light">
+        <div class="d-flex align-items-center gap-3">
+            <h6 class="m-0 fw-bold text-purple-dark">Tabel Data Aset</h6>
+        </div>
 
-        {{-- BLOK TOMBOL EXPORT --}}
+        {{-- Tombol Export --}}
         <div class="d-flex gap-2">
-            <h6 class="m-0 fw-bold text-purple-dark me-2">Tabel Data Aset</h6>
             <a href="{{ route('assets.export.csv') . (request()->has('search') ? '?search=' . request('search') : '') }}" class="btn btn-sm btn-success text-white">
-                <i class="fas fa-file-excel me-1"></i> Excel (CSV)
+                <i class="fas fa-file-excel me-1"></i> CSV
             </a>
             <a href="{{ route('assets.export.pdf') . (request()->has('search') ? '?search=' . request('search') : '') }}" class="btn btn-sm btn-danger text-white">
                 <i class="fas fa-file-pdf me-1"></i> PDF
             </a>
         </div>
-
-        {{-- BLOK PENCARIAN (DIGANTI MENGGUNAKAN FORM GET) --}}
-        <form action="{{ route('assets.index') }}" method="GET" style="width: 250px;">
-            <div class="input-group input-group-sm">
-                <span class="input-group-text bg-white border-purple-light text-purple"><i class="fas fa-search"></i></span>
-                <input type="text" name="search" class="form-control border-purple-light" placeholder="Cari data cepat..." value="{{ request('search') }}">
-                @if(request('search'))
-                <a href="{{ route('assets.index') }}" class="input-group-text bg-light border-purple-light text-danger" title="Hapus Pencarian"><i class="fas fa-times"></i></a>
-                @else
-                <button type="submit" class="d-none"></button> {{-- Tombol submit tersembunyi untuk input pencarian --}}
-                @endif
-            </div>
-        </form>
     </div>
 
     <div class="card-body p-0">
@@ -66,11 +143,11 @@
                         <th class="text-purple-dark">Kode & Nama Aset</th>
                         <th class="text-purple-dark">Kategori</th>
                         <th class="text-purple-dark">Lokasi & PJ</th>
-                        <th class="text-center text-purple-dark">Stok Tersedia</th>
-                        <th class="text-center text-purple-dark">Kondisi & Status</th>
-                        @auth
-                        <th width="150px" class="text-center text-purple-dark pe-4">Aksi</th>
-                        @endauth
+                        <th class="text-center text-purple-dark">Stok</th>
+                        <th class="text-center text-purple-dark">Kondisi</th>
+                        @if(Auth::user()->role_user == 'admin')
+                            <th width="150px" class="text-center text-purple-dark pe-4">Aksi</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody>
@@ -86,7 +163,6 @@
                                     <h6 class="mb-0 text-purple-dark">{{ $item->nama_barang }}</h6>
                                     <div class="d-flex align-items-center gap-2">
                                         <small class="text-muted font-size-11 text-uppercase">Kode: <span class="text-purple fw-bold">{{ $item->kode_aset }}</span></small>
-                                        {{-- Ikon Kecil Indikator QR --}}
                                         <i class="fas fa-qrcode text-muted" style="font-size: 10px;" title="QR Code Tersedia"></i>
                                     </div>
                                 </div>
@@ -100,120 +176,119 @@
                             <div class="text-purple-dark fw-semibold">{{ $item->penanggung_jawab }}</div>
                             <small class="text-muted"><i class="fas fa-map-marker-alt me-1 text-purple"></i>{{ $item->lokasi }}</small>
                         </td>
-
-                        {{-- LOGIKA STOK --}}
-                        @php
-                        $varianBarang = \App\Models\AsetModel::where('kode_aset', $item->kode_aset)->get();
-                        $totalStok = $varianBarang->sum('jumlah');
-                        $stokBaik = $varianBarang->where('kondisi', 'Baik')->sum('jumlah');
-                        $stokRusakRingan = $varianBarang->where('kondisi', 'Rusak Ringan')->sum('jumlah');
-                        $stokRusakBerat = $varianBarang->where('kondisi', 'Rusak Berat')->sum('jumlah');
-                        @endphp
-
+                        
+                        {{-- KOLOM STOK (Data dari Controller) --}}
                         <td class="text-center">
-                            <div class="fw-bold fs-5 text-purple-dark">{{ $totalStok }}</div>
-                            <span class="fw-normal text-muted small">{{ $item->satuan }}</span>
+                            @if($item->total_stok > 0)
+                                <div class="fw-bold fs-5 text-purple-dark">{{ $item->total_stok }}</div>
+                                <span class="fw-normal text-muted small">{{ $item->satuan }}</span>
+                            @else
+                                <span class="badge bg-danger">Habis</span>
+                            @endif
                         </td>
 
+                        {{-- KOLOM KONDISI (Data dari Controller) --}}
                         <td class="text-center">
                             <div class="d-flex flex-column gap-1 align-items-center">
-                                @if($stokBaik > 0)
-                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2">
-                                    <i class="fas fa-check-circle me-1"></i> {{ $stokBaik }} Baik
-                                </span>
+                                @if($item->stok_baik > 0) 
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success px-2">{{ $item->stok_baik }} Baik</span> 
                                 @endif
-                                @if($stokRusakRingan > 0)
-                                <span class="badge bg-warning bg-opacity-10 text-dark border border-warning border-opacity-25 rounded-pill px-2">
-                                    <i class="fas fa-exclamation-triangle me-1"></i> {{ $stokRusakRingan }} Rusak Ringan
-                                </span>
+                                @if($item->stok_rusak_ringan > 0) 
+                                    <span class="badge bg-warning bg-opacity-10 text-dark border border-warning px-2">{{ $item->stok_rusak_ringan }} RR</span> 
                                 @endif
-                                @if($stokRusakBerat > 0)
-                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 rounded-pill px-2">
-                                    <i class="fas fa-times-circle me-1"></i> {{ $stokRusakBerat }} Rusak Berat
-                                </span>
+                                @if($item->stok_rusak_berat > 0) 
+                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger px-2">{{ $item->stok_rusak_berat }} RB</span> 
+                                @endif
+                                @if($item->sedang_diperbaiki > 0) 
+                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 mt-1">{{ $item->sedang_diperbaiki }} Service</span> 
                                 @endif
                             </div>
                         </td>
-
-                        @auth
-                        <td class="text-center pe-4">
-                            <div class="btn-group" role="group">
-                                {{-- TOMBOL QR CODE --}}
-                                <button type="button" class="btn btn-sm btn-dark text-white" data-bs-toggle="modal" data-bs-target="#modalQr{{ $item->id ?? 0 }}" title="Scan Barcode">
-                                    <i class="fas fa-qrcode"></i>
-                                </button>
-
-                                <a href="{{ route('assets.edit', $item->id ?? 0) }}" class="btn btn-sm btn-warning text-white" title="Edit">
-                                    <i class="fas fa-edit"></i>
-                                </a
-
+                        {{-- Fungsi Pembatas Akses (hanya untuk admin) --}}
+                        @if(Auth::user()->role_user == 'admin')
+                            <td class="text-center pe-4">
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-dark" data-bs-toggle="modal" data-bs-target="#modalQr{{ $item->id }}"><i class="fas fa-qrcode"></i></button>
+                                    <a href="{{ route('assets.edit', $item->id) }}" class="btn btn-sm btn-warning text-white"><i class="fas fa-edit"></i></a>
                                     <form onsubmit="return confirm('Hapus aset ini?');" action="{{ route('assets.destroy', $item->id) }}" method="POST" class="d-inline">
-                                @csrf @method('DELETE')
-                                {{-- Kirim Flag Hapus Group --}}
-                                <input type="hidden" name="hapus_by_kode" value="1">
-                                <input type="hidden" name="kode_aset" value="{{ $item->kode_aset }}">
-
-                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus" style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                                </form>
-                            </div>
-                        </td>
-                        @endauth
+                                        @csrf @method('DELETE')
+                                        <input type="hidden" name="hapus_by_kode" value="1">
+                                        <input type="hidden" name="kode_aset" value="{{ $item->kode_aset }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius: 0 5px 5px 0;"><i class="fas fa-trash"></i></button>
+                                    </form>
+                                </div>
+                            </td>
+                        @endif
                     </tr>
-
-                    {{-- MODAL QR CODE (CHILLERLAN) --}}
-                    <div class="modal fade" id="modalQr{{ $item->id ?? 0 }}" tabindex="-1" aria-hidden="true">
+                    
+                    {{-- MODAL QR (INCLUDE LANGSUNG AGAR COMPACT) --}}
+                    <div class="modal fade" id="modalQr{{ $item->id }}" tabindex="-1" aria-hidden="true">
                         <div class="modal-dialog modal-sm modal-dialog-centered">
                             <div class="modal-content text-center">
-                                <div class="modal-header border-0 pb-0">
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
+                                <div class="modal-header border-0 pb-0"><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                                 <div class="modal-body pb-4" id="printableArea{{ $item->id }}">
                                     <h6 class="fw-bold text-purple-dark mb-3">Barcode Aset</h6>
-
-                                    {{-- GENERATE QR CODE BERISI URL --}}
-                                    <div class="d-flex justify-content-center mb-3 p-2 bg-white rounded">
-                                        {{-- PENTING: Isi render() diganti menjadi URL Route Show --}}
-                                        <img src="{{ (new \chillerlan\QRCode\QRCode)->render(route('assets.show', $item->id)) }}"
-                                            alt="QR Code"
-                                            style="width: 100%; max-width: 180px; height: auto; border: 1px solid #eee; padding: 5px;">
+                                    <div class="d-flex justify-content-center mb-3 p-2 bg-white rounded border">
+                                        <img src="{{ (new \chillerlan\QRCode\QRCode)->render(route('assets.show', $item->id)) }}" alt="QR" style="width:100%; max-width:150px;">
                                     </div>
-
-                                    <div class="fw-bold fs-5 text-dark" style="font-family: monospace;">{{ $item->kode_aset }}</div>
-                                    <div class="small text-muted text-uppercase">{{ $item->nama_barang }}</div>
+                                    <div class="fw-bold fs-5 text-dark">{{ $item->kode_aset }}</div>
+                                    <div class="small text-muted">{{ $item->nama_barang }}</div>
                                 </div>
                                 <div class="modal-footer justify-content-center border-0 pt-0">
-                                    {{-- Kita kirim HTML dari area print ke fungsi JS --}}
-                                    <button class="btn btn-sm btn-primary w-100" onclick="printLabel('{{ $item->id }}')">
-                                        <i class="fas fa-print me-1"></i> Cetak Label
-                                    </button>
+                                    <button class="btn btn-sm btn-primary w-100" onclick="printLabel('{{ $item->id }}')"><i class="fas fa-print me-1"></i> Cetak</button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     @empty
-                    <tr>
-                        <td colspan="7" class="text-center py-5">
-                            <div class="empty-state">
-                                <img src="https://cdn-icons-png.flaticon.com/512/4076/4076549.png" alt="Kosong" style="width: 80px; opacity: 0.5; filter: grayscale(100%) sepia(100%) hue-rotate(220deg) saturate(200%);">
-                                <p class="text-muted mt-3 mb-0">Belum ada data aset yang tercatat.</p>
-                            </div>
-                        </td>
-                    </tr>
+                    <tr><td colspan="7" class="text-center py-5 text-muted">Data tidak ditemukan.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-
-        <div class="px-4 py-3 border-top-purple-light d-flex justify-content-end">
-            {{ $assets->links() }}
+        {{-- PAGINATION --}}
+        <div class="px-4 py-3 border-top-purple-light d-flex justify-content-end align-items-center">
+            <div>
+                {{ $assets->appends(request()->query())->links('pagination::bootstrap-5') }}
+            </div>
         </div>
     </div>
 </div>
 
+@push('scripts')
 <script>
+   // INISIALISASI SELECT2
+    $(document).ready(function() {
+        console.log('Select2 Initializing...'); // Cek di console log
+        $('#filterSearch').select2({
+            theme: 'bootstrap-5',
+            allowClear: true,
+            placeholder: 'Ketik No.Inv / Nama...',
+            width: '100%',
+            language: { noResults: function() { return "Ketik untuk mencari..."; } }
+        });
+        $('#filterKategori').select2({
+            theme: 'bootstrap-5',
+            allowClear: true,
+            width: '100%',
+            placeholder: 'Semua Kategori'
+        });
+        
+        $('#filterLokasi').select2({
+            theme: 'bootstrap-5',
+            allowClear: true,
+            width: '100%',
+            placeholder: 'Semua Lokasi'
+        });
+        $('#filterPJ').select2({
+            theme: 'bootstrap-5',
+            allowClear: true,
+            width: '100%',
+            placeholder: 'Semua Penanggung Jawab'
+        });
+    });
+
     function printLabel(id) {
         // Ambil isi HTML dari dalam modal (Gambar + Teks)
         var content = document.getElementById('printableArea' + id).innerHTML;
@@ -246,7 +321,7 @@
         }, 500);
     }
 </script>
-
+@endpush
 <style>
     /* STYLE AGAR SAAT PRINT HANYA MODAL YANG MUNCUL */
     @media print {
@@ -420,6 +495,63 @@
 
     .pagination .page-link {
         color: #883C8C;
+    }
+    /* Custom Style untuk Select2  */
+    .select2-container--bootstrap-5 .select2-selection {
+        border-color: #E6D7E9;
+        font-size: 14px;
+        padding: 0.375rem 0.75rem;
+    }
+    .select2-container--bootstrap-5 .select2-selection--single {
+        height: calc(2.2rem + 2px); /* Sesuaikan tinggi dengan input bootstrap */
+    }
+
+    /* CUSTOM PAGINATION STYLE (MUNZALAN THEME) */
+    
+    /* Container Pagination */
+    .pagination {
+        margin-bottom: 0;
+        gap: 5px; /* Memberi jarak antar kotak angka */
+    }
+
+    /* Tombol Default */
+    .page-item .page-link {
+        color: #883C8C; /* Teks Ungu */
+        border: 1px solid #E6D7E9; /* Border Ungu Muda */
+        border-radius: 6px; /* Sudut tumpul yang manis */
+        padding: 6px 12px;
+        font-size: 13px;
+        font-weight: 600;
+        background-color: white;
+        transition: all 0.2s ease-in-out;
+    }
+
+    /* Saat Hover (Mouse Lewat) */
+    .page-item .page-link:hover {
+        background-color: #f8f0fa; /* Latar ungu sangat muda */
+        color: #5A1968; /* Teks ungu tua */
+        border-color: #883C8C;
+        z-index: 2;
+    }
+
+    /* Tombol Aktif (Halaman Sekarang) */
+    .page-item.active .page-link {
+        background-color: #883C8C; /* Latar Ungu Utama */
+        border-color: #883C8C;
+        color: white;
+        box-shadow: 0 3px 8px rgba(136, 60, 140, 0.3); /* Efek bayangan halus */
+    }
+
+    /* Tombol Disabled (Prev/Next mentok) */
+    .page-item.disabled .page-link {
+        color: #b0b0b0;
+        background-color: #f9f9f9;
+        border-color: #eee;
+    }
+
+    /* Hilangkan outline biru bawaan browser saat diklik */
+    .page-link:focus {
+        box-shadow: 0 0 0 3px rgba(136, 60, 140, 0.15);
     }
 </style>
 @endsection

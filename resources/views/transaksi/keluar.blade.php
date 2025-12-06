@@ -9,55 +9,65 @@
         <div class="card card-custom">
             <div class="card-header bg-white py-3">
                 <h5 class="mb-0 fw-bold text-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i> Form Penghapusan Aset
+                    <i class="fas fa-exclamation-triangle me-2"></i> Pencatatan Aset Rusak
                 </h5>
-                <p class="mb-0 small text-muted">Gunakan form ini untuk mencatat barang yang sudah rusak total dan tidak bisa diperbaiki lagi.</p>
+                <p class="mb-0 small text-muted">Kelola barang rusak: Laporkan kerusakan atau hapus barang yang dimusnahkan.</p>
             </div>
             
             <div class="card-body p-4">
                 <form action="{{ route('transaksi.store') }}" method="POST">
                     @csrf
                     
-                    {{-- Hidden: Jenis Transaksi ini otomatis 'Keluar' --}}
-                    <input type="hidden" name="jenis_transaksi" value="Keluar">
-
+                    {{-- PILIH BARANG --}}
                     <div class="mb-3">
-                        <label class="form-label fw-bold small">Pilih Aset yang Rusak</label>
+                        <label class="form-label fw-bold small">Pilih Aset</label>
                         <select name="aset_id" class="form-select select2" required>
                             <option value="">-- Cari Barang --</option>
                             @foreach($assets as $aset)
                                 <option value="{{ $aset->id }}">
-                                    {{ $aset->kode_aset }} - {{ $aset->nama_barang }} (Stok: {{ $aset->jumlah }})
+                                    {{ $aset->kode_aset }} - {{ $aset->nama_barang }} ({{ $aset->kondisi }} - Stok: {{ $aset->jumlah }})
                                 </option>
                             @endforeach
                         </select>
-                        <div class="form-text text-danger small">* Stok akan otomatis berkurang permanen.</div>
+                    </div>
+
+                    {{-- NEW: PILIH TINDAKAN --}}
+                    <div class="mb-4 p-3 bg-light border rounded">
+                        <label class="form-label fw-bold text-purple-dark">Jenis Tindakan <span class="text-danger">*</span></label>
+                        <select name="tindakan" class="form-select" required>
+                            <option value="lapor_rusak">📝 Lapor Rusak (Stok Tetap Ada, Status Berubah)</option>
+                            <option value="musnahkan">🗑️ Musnahkan / Buang (Stok Berkurang Permanen)</option>
+                        </select>
+                        <div class="form-text mt-2 small text-muted">
+                            <strong>Lapor Rusak:</strong> Barang masih di gudang tapi kondisinya rusak.<br>
+                            <strong>Musnahkan:</strong> Barang dibuang/dijual rongsok (hilang dari gudang).
+                        </div>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold small">Tanggal Pencatatan</label>
+                            <label class="form-label fw-bold small">Tanggal</label>
                             <input type="date" name="tanggal_keluar" class="form-control" value="{{ date('Y-m-d') }}" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold small">Jumlah Rusak</label>
+                            <label class="form-label fw-bold small">Jumlah</label>
                             <input type="number" name="jumlah_keluar" class="form-control" min="1" required>
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold small">Dilaporkan Oleh (PJ)</label>
-                        <input type="text" name="penerima" class="form-control" placeholder="Nama Pelapor" required>
+                        <label class="form-label fw-bold small">Penanggung Jawab / Saksi</label>
+                        <input type="text" name="penerima" class="form-control" placeholder="Nama PJ" required>
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label fw-bold small">Penyebab Kerusakan / Keterangan</label>
-                        <textarea name="alasan" class="form-control" rows="3" placeholder="Contoh: Terbakar, Hancur karena banjir, Hilang dicuri, dll." required></textarea>
+                        <label class="form-label fw-bold small">Keterangan / Alasan</label>
+                        <textarea name="alasan" class="form-control" rows="3" placeholder="Contoh: Rusak dimakan rayap, atau Dibakar karena hancur total..." required></textarea>
                     </div>
 
                     <div class="d-flex justify-content-end gap-2">
                         <a href="{{ route('transaksi.index') }}" class="btn btn-light">Batal</a>
-                        <button type="submit" class="btn btn-danger">Simpan Data & Kurangi Stok</button>
+                        <button type="submit" class="btn btn-danger">Simpan</button>
                     </div>
                 </form>
             </div>

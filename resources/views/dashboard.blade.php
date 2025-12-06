@@ -242,7 +242,7 @@
             <div class="text-end d-none d-md-block">
                 <span class="badge-soft mb-2">
                     <i class="fas fa-user-shield me-1"></i>
-                    {{ Auth::user()->role ?? 'Admin Yayasan' }}
+                    {{ Auth::user()->role_user ?? 'Admin Yayasan' }}
                 </span>
                 <div class="small text-white opacity-75">
                     <i class="far fa-clock me-1"></i>
@@ -260,7 +260,7 @@
         <div class="stat-card-mini" style="background: linear-gradient(135deg, #f3e8f5, #fce7ff); border-left: 4px solid #883C8C;">
             <div>
                 <div class="stat-label-mini">Jenis Aset</div>
-                <div class="stat-value-mini">{{ number_format($totalAset, 0, ',', '.') }}</div>
+                <div class="stat-value-mini">{{ number_format($totalJenisAset, 0, ',', '.') }}</div>
                 <div class="stat-caption">Item terdaftar</div>
             </div>
             <div class="stat-icon-mini" style="background: rgba(136,60,140,0.15); color:#5A1968;">
@@ -290,7 +290,7 @@
         <div class="stat-card-mini" style="background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-left: 4px solid #10b981;">
             <div>
                 <div class="stat-label-mini">Kondisi Baik</div>
-                <div class="stat-value-mini text-success">{{ number_format($asetBaik, 0, ',', '.') }}</div>
+                <div class="stat-value-mini text-success">{{ number_format($stokBaik, 0, ',', '.') }}</div>
                 <div class="stat-caption">Siap digunakan</div>
             </div>
             <div class="stat-icon-mini" style="background: rgba(16,185,129,0.15); color:#047857;">
@@ -304,9 +304,9 @@
     <div class="col-6 col-md-3">
         <div class="stat-card-mini" style="background: linear-gradient(135deg, #fef2f2, #fee2e2); border-left: 4px solid #ef4444;">
             <div>
-                <div class="stat-label-mini">Perlu Perbaikan</div>
-                <div class="stat-value-mini text-danger">{{ number_format($asetRusak, 0, ',', '.') }}</div>
-                <div class="stat-caption">Rusak / Hilang</div>
+                <div class="stat-label-mini">Jumlah Rusak</div>
+                <div class="stat-value-mini text-danger">{{ number_format($stokRusak, 0, ',', '.') }}</div>
+                <div class="stat-caption">Rusak berat / Dimusnahkan</div>
             </div>
             <div class="stat-icon-mini" style="background: rgba(239,68,68,0.15); color:#b91c1c;">
                 <i class="fas fa-tools"></i>
@@ -318,7 +318,8 @@
 
 <div class="row g-3 mb-4">
     {{-- BAGIAN KIRI: RINGKASAN STATUS --}}
-    <div class="col-lg-8">
+    {{-- Jika user bukan admin, lebarkan kolom ini jadi full agar rapi --}}
+    <div class="{{ Auth::user()->role_user == 'admin' ? 'col-lg-8' : 'col-12' }}">
         <div class="section-card h-100 position-relative overflow-hidden">
             <div class="d-flex justify-content-between align-items-start mb-3">
                 <div>
@@ -336,7 +337,7 @@
                 <div>
                     <div class="text-muted small mb-1 text-uppercase fw-bold ls-1">Rasio Kerusakan</div>
                     <div class="fw-bold" style="font-size: 36px; color: #5A1968; line-height: 1;">
-                        {{ $totalStok > 0 ? round(($asetRusak / $totalStok) * 100, 1) : 0 }}%
+                        {{ $totalStok > 0 ? round(($stokRusak / $totalStok) * 100, 1) : 0 }}%
                     </div>
                     <div class="small text-muted mt-2">
                         <i class="fas fa-info-circle text-purple me-1"></i>
@@ -351,7 +352,8 @@
         </div>
     </div>
 
-    {{-- BAGIAN KANAN: AKSI CEPAT --}}
+    {{-- BAGIAN KANAN: AKSI CEPAT (HANYA UNTUK ADMIN) --}}
+    @if(Auth::user()->role_user == 'admin')
     <div class="col-lg-4">
         <div class="section-card h-100">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -375,7 +377,7 @@
                 <a href="{{ route('transaksi.create') }}"
                    class="btn btn-outline-warning text-dark btn-sm d-flex justify-content-between align-items-center py-2"
                    style="border-radius: 999px;">
-                    <span><i class="fas fa-sign-out-alt me-2"></i> Input Barang Keluar</span>
+                    <span><i class="fas fa-sign-out-alt me-2"></i> Input Aset Rusak</span>
                     <i class="fas fa-chevron-right small opacity-50"></i>
                 </a>
 
@@ -388,6 +390,7 @@
             </div>
         </div>
     </div>
+    @endif
 </div>
 
 {{-- TABEL TRANSAKSI TERBARU --}}
@@ -442,7 +445,7 @@
                                 <span class="badge {{ $badgeColor }} rounded-pill">{{ $log->alasan }}</span>
                             </td>
                             <td>
-                                <span class="fw-bold text-danger">-{{ $log->jumlah_keluar }}</span>
+                                <span class="fw-bold text-danger">{{ $log->jumlah_keluar }}</span>
                                 <small class="text-muted"> {{ $log->aset->satuan ?? '' }}</small>
                             </td>
                             <td class="text-end pe-4">

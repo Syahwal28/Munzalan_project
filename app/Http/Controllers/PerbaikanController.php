@@ -12,10 +12,43 @@ use Illuminate\Support\Facades\Storage;
 class PerbaikanController extends Controller
 {
     // Tampilkan Daftar Perbaikan
-    public function index()
+    public function index(Request $request)
     {
-        $perbaikan = Perbaikan::with('aset')->latest()->paginate(10);
-        return view('perbaikan.index', compact('perbaikan'));
+        // 1. QUERY DASAR
+        $query = Perbaikan::with('aset');
+
+        // 2. FILTER LOGIC
+        if ($request->filled('aset_id')) {
+            $query->where('aset_id', $request->aset_id);
+        }
+
+        if ($request->filled('penanggung_jawab')) {
+            $query->where('penanggung_jawab', $request->penanggung_jawab);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('tgl_masuk')) {
+            $query->whereDate('tgl_masuk', $request->tgl_masuk);
+        }
+
+        // 3. EKSEKUSI QUERY
+        $perbaikan = $query->latest('tgl_masuk')->paginate(10)->withQueryString();
+
+        // 4. DATA UNTUK DROPDOWN
+        // Ambil aset yang pernah masuk servis saja (dari tabel perbaikan) agar list tidak penuh sampah
+        $idAsetServis = Perbaikan::distinct()->pluck('aset_id');
+        $dataAset = AsetModel::whereIn('id', $idAsetServis)
+                                         ->select('id', 'kode_aset', 'nama_barang')
+                                         ->orderBy('nama_barang')
+                                         ->get();
+
+        // Ambil PJ Service unik
+        $dataPJ = Perbaikan::distinct()->pluck('penanggung_jawab');
+
+        return view('perbaikan.index', compact('perbaikan', 'dataAset', 'dataPJ'));
     }
 
     // Tampilkan Form Input Perbaikan Baru
@@ -31,7 +64,7 @@ class PerbaikanController extends Controller
         return view('perbaikan.create', compact('assets'));
     }
 
-    // Simpan Data Perbaikan Baru (Status: Proses)
+    // Simpan Data Perbaikan Baru
     public function store(Request $request)
     {
         $request->validate([
@@ -42,16 +75,16 @@ class PerbaikanController extends Controller
             'keterangan_kerusakan' => 'required|string',
         ]);
 
-        // VALIDASI TAMBAHAN (BACKEND SAFETY)
-        // Mencegah user nakal yang mencoba servis barang 'Baik' lewat inspect element
         $cekAset = AsetModel::find($request->aset_id);
+        
+        // Cek apakah stok cukup
         if($cekAset->jumlah < $request->jumlah_perbaikan) {
-         
-            return back()->withInput()->withErrors(['jumlah_perbaikan' => 'Stok tidak cukup! Sisa: '.$cekAset->jumlah]);
+            return back()->withInput()->withErrors(['jumlah_perbaikan' => 'Stok fisik tidak cukup! Sisa: '.$cekAset->jumlah]);
         }
-        // Cek Kondisi (Tetap pakai logika 'Rusak Only')
+
+        // Cek Kondisi (Hanya barang rusak yang boleh diservis)
         if(!in_array($cekAset->kondisi, ['Rusak Ringan', 'Rusak Berat'])) {
-            return back()->withErrors(['aset_id' => 'Barang dengan kondisi Baik tidak bisa diajukan service.']);
+            return back()->withErrors(['aset_id' => 'Barang dengan kondisi Baik tidak perlu diservis.']);
         }
 
         DB::transaction(function () use ($request) {
@@ -62,116 +95,115 @@ class PerbaikanController extends Controller
                 'tgl_masuk' => $request->tgl_masuk,
                 'penanggung_jawab' => $request->penanggung_jawab,
                 'keterangan_kerusakan' => $request->keterangan_kerusakan,
-                'status' => 'Proses', // Default Proses
+                'status' => 'Proses', 
                 'biaya' => 0,
             ]);
 
-            // 2. Kurangi Stok Aset (Karena barang sedang diservis)
-            $aset = AsetModel::findOrFail($request->aset_id);
-            $aset->decrement('jumlah', $request->jumlah_perbaikan);
+            // [PERUBAHAN DISINI]
+            // KITA TIDAK MENGURANGI STOK. 
+            // Stok di database tetap utuh agar di Index Aset angkanya tidak berkurang.
+            // $aset->decrement('jumlah'); <--- INI DIHAPUS
         });
 
-        return redirect()->route('perbaikan.index')->with('success', 'Data perbaikan dicatat. Stok aset dikurangi sementara.');
+        return redirect()->route('perbaikan.index')->with('success', 'Data perbaikan dicatat. Status barang kini dalam perbaikan (Stok tetap tercatat sebagai aset yayasan).');
     }
 
-    // Update Status Jadi Selesai & Upload Nota
+    // Update Status Jadi Selesai
     public function update(Request $request, $id)
     {
         $perbaikan = Perbaikan::findOrFail($id);
 
         $request->validate([
-            'tgl_selesai' => 'required|date',
-            'biaya'       => 'required|numeric|min:0',
+            'tgl_selesai'   => 'required|date',
+            'biaya'         => 'required|numeric|min:0',
             'kondisi_akhir' => 'required|string', 
             'jumlah_gagal'  => 'nullable|integer|min:1|max:'.$perbaikan->jumlah_perbaikan,
-            'bukti_nota'  => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'bukti_nota'    => 'nullable|image|max:2048',
         ]);
 
         DB::transaction(function () use ($request, $perbaikan) {
             
-            // 1. Upload Nota
+            // 1. Simpan Data Perbaikan & Nota
             if ($request->hasFile('bukti_nota')) {
-                if ($perbaikan->bukti_nota) {
-                    Storage::disk('public')->delete($perbaikan->bukti_nota);
-                }
-                $path = $request->file('bukti_nota')->store('nota_perbaikan', 'public');
-                $perbaikan->bukti_nota = $path;
+                if ($perbaikan->bukti_nota) Storage::disk('public')->delete($perbaikan->bukti_nota);
+                $perbaikan->bukti_nota = $request->file('bukti_nota')->store('nota_perbaikan', 'public');
             }
 
-            // 2. Update Data Perbaikan
+            // Hitung Matematika Stok
+            $totalServis  = $perbaikan->jumlah_perbaikan; // Contoh: 5
+            $unitGagal    = ($request->kondisi_akhir == 'Rusak Berat') ? ($request->jumlah_gagal ?? $totalServis) : 0; // Contoh: 2
+            $unitBerhasil = $totalServis - $unitGagal; // Contoh: 3
+
+            // Update Status Perbaikan
             $perbaikan->tgl_selesai = $request->tgl_selesai;
             $perbaikan->biaya = $request->biaya;
-            $perbaikan->keterangan_perbaikan = $request->keterangan_perbaikan;
+            $perbaikan->keterangan_perbaikan = $request->keterangan_perbaikan . " (Sukses: $unitBerhasil, Gagal: $unitGagal)";
             $perbaikan->status = 'Selesai';
-            // Simpan hasil akhir di tabel perbaikan (opsional, jika kolom ada)
-            // $perbaikan->hasil_akhir = $request->kondisi_akhir; 
             $perbaikan->save();
-            
-            // 2. LOGIKA STOK PINTAR
-            $asetAsal = AsetModel::findOrFail($perbaikan->aset_id);
-            $totalUnit = $perbaikan->jumlah_perbaikan; // Misal 5
-            
-            $unitGagal = $request->kondisi_akhir == 'Rusak Berat' ? ($request->jumlah_gagal ?? $totalUnit) : 0; // Misal 3
-            $unitBerhasil = $totalUnit - $unitGagal; // 5 - 3 = 2
 
-            // A. Handle Unit Berhasil (Kembali ke Stok Baik)
-            if ($unitBerhasil > 0) {
-                // Cari wadah aset yang kondisinya 'Baik' dengan kode sama
-                $asetBaik = AsetModel::where('kode_aset', $asetAsal->kode_aset)->where('kondisi', 'Baik')->first();
-                
-                if ($asetBaik) {
-                    $asetBaik->increment('jumlah', $unitBerhasil);
-                } else {
-                    // Buat baru jika belum ada
-                    $newAset = $asetAsal->replicate();
-                    $newAset->kondisi = 'Baik';
-                    $newAset->jumlah = $unitBerhasil;
-                    $newAset->push();
-                }
-            }
+            // 2. LOGIKA PINDAH STOK (SPLIT)
+            $asetAsal = AsetModel::findOrFail($perbaikan->aset_id); // Ini aset kondisi awal (misal: Rusak Ringan)
 
-            // B. Handle Unit Gagal (Masuk ke Log Aset Rusak & Buat Stok Rusak Berat)
+            // --- A. HANDLE YANG GAGAL (PINDAH KE RUSAK BERAT) ---
             if ($unitGagal > 0) {
-                // 1. Cari wadah aset 'Rusak Berat'
-                $asetRusak = AsetModel::where('kode_aset', $asetAsal->kode_aset)->where('kondisi', 'Rusak Berat')->first();
-                
+                // 1. Kurangi stok dari asal
+                $asetAsal->decrement('jumlah', $unitGagal);
+
+                // 2. Masukkan ke aset 'Rusak Berat'
+                $asetRusak = AsetModel::where('kode_aset', $asetAsal->kode_aset)
+                                      ->where('kondisi', 'Rusak Berat')
+                                      ->first();
+
+                $idUntukLog = null;
+
                 if ($asetRusak) {
                     $asetRusak->increment('jumlah', $unitGagal);
-                    $idAsetRusak = $asetRusak->id;
+                    $idUntukLog = $asetRusak->id;
                 } else {
+                    // Buat baru jika belum ada
                     $newRusak = $asetAsal->replicate();
                     $newRusak->kondisi = 'Rusak Berat';
                     $newRusak->jumlah = $unitGagal;
                     $newRusak->push();
-                    $idAsetRusak = $newRusak->id;
+                    $idUntukLog = $newRusak->id;
                 }
 
-                // 2. Catat Otomatis ke Tabel Transaksi (Menu Aset Rusak)
-                // Pastikan Anda sudah punya Model Transaksi
+                // 3. Catat di Log Aset Rusak (Agar tercatat sejarahnya)
                 Transaksi::create([
-                    'aset_id'           => $idAsetRusak, // Link ke aset yang rusak berat tadi
-                    'jenis_transaksi'   => 'Keluar',
+                    'aset_id'           => $idUntukLog,
+                    'jenis_transaksi'   => 'Laporan Rusak',
                     'tanggal_keluar'    => $request->tgl_selesai,
                     'jumlah_keluar'     => $unitGagal,
-                    'penerima'          => 'Sistem (Hasil Servis Gagal)',
-                    'alasan'            => 'Gagal Service: ' . ($request->keterangan_perbaikan ?? 'Tidak dapat diperbaiki'),
-                    'biaya_tanggungan'  => 0, // Atau ambil dari biaya servis jika mau dibebankan
+                    'penerima'          => 'Sistem (Gagal Servis)',
+                    'alasan'            => 'Gagal diperbaiki (Rusak Berat)',
+                    'biaya_tanggungan'  => 0,
                 ]);
-                
-                // Opsional: Karena sudah dicatat "Keluar/Musnah" di tabel transaksi, 
-                // apakah stok di aset rusak berat mau dikurangi lagi jadi 0?
-                // Jika MENU Transaksi itu fungsinya "Log Pemusnahan", maka ya, kurangi lagi.
-                // Jika MENU Transaksi cuma "Log", biarkan stoknya tetap ada sebagai 'Rusak Berat'.
-                
-                // ASUMSI SAYA: Menu Transaksi = Pemusnahan (Stok Hilang).
-                // Maka kita kurangi lagi stoknya.
-                $finalAset = AsetModel::find($idAsetRusak);
-                $finalAset->decrement('jumlah', $unitGagal);
+            }
+
+            // --- B. HANDLE YANG BERHASIL (PINDAH KE BAIK) ---
+            if ($unitBerhasil > 0) {
+                // 1. Kurangi stok dari asal (Karena statusnya sudah bukan rusak ringan lagi)
+                $asetAsal->decrement('jumlah', $unitBerhasil);
+
+                // 2. Masukkan ke aset 'Baik'
+                $asetBaik = AsetModel::where('kode_aset', $asetAsal->kode_aset)
+                                     ->where('kondisi', 'Baik')
+                                     ->first();
+
+                if ($asetBaik) {
+                    $asetBaik->increment('jumlah', $unitBerhasil);
+                } else {
+                    // Buat baru jika belum ada
+                    $newBaik = $asetAsal->replicate();
+                    $newBaik->kondisi = 'Baik';
+                    $newBaik->jumlah = $unitBerhasil;
+                    $newBaik->push();
+                }
             }
         });
 
         return redirect()->route('perbaikan.index')
-                        ->with('success', 'Perbaikan selesai. Stok telah disesuaikan berdasarkan kondisi akhir.');
+                         ->with('success', 'Perbaikan selesai. Stok berhasil dipecah sesuai kondisi akhir.');
     }
 
     // method destroy jika perlu menghapus data service

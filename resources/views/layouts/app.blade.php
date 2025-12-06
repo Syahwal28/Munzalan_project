@@ -15,6 +15,10 @@
     {{-- Google Fonts --}}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+    {{-- Select2 CSS --}}
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+
     <style>
         /* --- SKEMA WARNA BARU (MUNZALAN PURPLE) --- */
         :root {
@@ -362,7 +366,6 @@
 
     <div class="mobile-nav">
         <div class="mobile-nav-brand">
-            {{-- GANTI DENGAN LOGO GAMBAR --}}
             <img src="{{ asset('storage/images/logo.png') }}" alt="Logo Munzalan">
             Munzalan Inv.
         </div>
@@ -373,7 +376,6 @@
 
     <nav id="sidebarMenu" class="sidebar">
         <div class="sidebar-brand">
-            {{-- LOGO GAMBAR DI SIDEBAR --}}
             <img src="{{ asset('storage/images/logo.png') }}" alt="Logo Munzalan" class="brand-logo-img">
             <div class="brand-text">MUNZALAN</div>
         </div>
@@ -408,13 +410,9 @@
                 <i class="fas fa-chevron-down ms-auto" style="font-size: 10px;"></i>
             </a>
             <div class="collapse" id="menuTransaksi">
-
-                <!-- Menu barang keluar -->
                 <a href="{{ route('transaksi.index') }}" class="nav-link {{ request()->routeIs('transaksi.*') ? 'active' : '' }}">
                     <i class="fas fa-sign-out-alt"></i> Aset Rusak
                 </a>
-
-                <!-- Menu daftar perbaikan -->
                 <a href="{{ route('perbaikan.index') }}" class="nav-link {{ request()->routeIs('perbaikan.*') ? 'active' : '' }}">
                     <i class="fas fa-tools"></i> Daftar Perbaikan
                 </a>
@@ -440,16 +438,11 @@
     <div class="main-content">
         <div class="top-navbar">
             <h1 class="page-title">@yield('page-title', 'Dashboard')</h1>
-            <div class="navbar-right">
-                <div class="search-box">
-                    <i class="fas fa-search"></i>
-                    <input type="text" placeholder="Cari aset...">
-                </div>
-            </div>
+            
         </div>
 
         <div class="content-container">
-            {{-- Flash Message (Alert Sukses) - Disesuaikan warnanya --}}
+            {{-- Flash Message (Alert Sukses) --}}
             @if(session('success'))
                 <div class="alert alert-success border-0 shadow-sm mb-4 d-flex align-items-center" style="background-color: #d1fae5; color: #065f46;">
                     <i class="fas fa-check-circle me-2 fs-5"></i>
@@ -462,7 +455,15 @@
         </div>
     </div>
 
+    {{-- Script Bundle Bootstrap --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    {{-- JQuery (Wajib untuk Select2) --}}
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
+    {{-- Select2 JS --}}
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
     <script>
         function toggleSidebar() {
             document.getElementById('sidebarMenu').classList.toggle('show');
@@ -479,7 +480,20 @@
                 }
             }
         });
+
+        // Inisialisasi Global untuk Select2 agar otomatis jalan di semua halaman
+        $(document).ready(function() {
+            $('.select2, .select2-filter').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                allowClear: true
+            });
+        });
     </script>
+    
+    {{-- STACK UNTUK SCRIPT TAMBAHAN PER HALAMAN --}}
+    @stack('scripts')
+    
 </body>
 
 </html>

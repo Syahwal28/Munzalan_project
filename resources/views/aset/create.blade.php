@@ -50,9 +50,9 @@
                     
                     <div class="row mb-4">
                         <div class="col-md-3 mb-3 mb-md-0">
-                            <label class="form-label fw-semibold text-purple-dark">Kode Aset Utama <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold text-purple-dark">No Inventaris <span class="text-danger">*</span></label>
                             <input type="text" name="kode_aset_utama" class="form-control" value="{{ old('kode_aset_utama') }}" placeholder="Cth: INV-2024-001" required>
-                            <div class="inv-field-hint">Kode otomatis diberi akhiran (-1, -2) jika input > 1 baris.</div>
+                            <div class="inv-field-hint">No otomatis diberi akhiran (-1, -2) jika input > 1 baris.</div>
                         </div>
                         <div class="col-md-5 mb-3 mb-md-0">
                             <label class="form-label fw-semibold text-purple-dark">Nama Barang <span class="text-danger">*</span></label>
@@ -101,7 +101,7 @@
                                     <th width="15%" class="text-purple-dark">Satuan</th>
                                     <th width="20%" class="text-purple-dark">Kondisi <span class="text-danger">*</span></th>
                                     <th width="25%" class="text-purple-dark">Penanggung Jawab <span class="text-danger">*</span></th>
-                                    <th width="23%" class="text-purple-dark">Ket.</th>
+                                    <th width="23%" class="text-purple-dark">Ket/Spesifikasi</th>
                                     <th width="5%"></th>
                                 </tr>
                             </thead>
@@ -131,7 +131,7 @@
                                         <input type="text" name="details[0][penanggung_jawab]" class="form-control" placeholder="Nama PJ" required>
                                     </td>
                                     <td>
-                                        <input type="text" name="details[0][keterangan]" class="form-control" placeholder="Opsional">
+                                        <input type="text" name="details[0][keterangan]" class="form-control" placeholder="Ket/Spesifikasi Aset" required>
                                     </td>
                                     <td class="text-center"></td>
                                 </tr>
@@ -229,7 +229,7 @@
                     <input type="text" name="details[${rowIndex}][penanggung_jawab]" class="form-control" placeholder="Nama PJ" required>
                 </td>
                 <td>
-                    <input type="text" name="details[${rowIndex}][keterangan]" class="form-control" placeholder="Opsional">
+                    <input type="text" name="details[${rowIndex}][keterangan]" class="form-control" placeholder="Ket/Spesifikasi Aset" required>
                 </td>
                 <td class="text-center">
                     <button type="button" class="btn btn-sm btn-outline-danger border-0 rounded-circle" style="width:32px; height:32px;" onclick="removeRow(this)">

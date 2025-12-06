@@ -25,7 +25,7 @@
         <thead>
             <tr>
                 <th width="5%">No</th>
-                <th width="15%">Kode Aset</th>
+                <th width="15%">No Inventaris</th>
                 <th>Nama Barang</th>
                 <th width="10%">Kategori</th>
                 <th width="15%">Penanggung Jawab</th>

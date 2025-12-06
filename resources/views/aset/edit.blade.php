@@ -21,7 +21,7 @@
                 <div>
                     <div class="inv-hero-kicker mb-1">Mode Perubahan Data</div>
                     <h2 class="inv-hero-title mb-1">Edit Aset: {{ $asset->nama_barang }}</h2>
-                    <p class="inv-hero-subtitle mb-0">Kode Aset: {{ $asset->kode_aset }}</p>
+                    <p class="inv-hero-subtitle mb-0">No Inventaris: {{ $asset->kode_aset }}</p>
                 </div>
             </div>
         </div>
@@ -52,9 +52,9 @@
                     
                     <div class="row mb-4">
                         <div class="col-md-3 mb-3 mb-md-0">
-                            <label class="form-label fw-semibold text-purple-dark">Kode Aset</label>
+                            <label class="form-label fw-semibold text-purple-dark">No Inventaris</label>
                             <input type="text" name="kode_aset" class="form-control bg-light" value="{{ old('kode_aset', $asset->kode_aset) }}" readonly>
-                            <div class="inv-field-hint">Kode aset tidak dapat diubah (Kunci Utama).</div>
+                            <div class="inv-field-hint">No Inventaris tidak dapat diubah (Kunci Utama).</div>
                         </div>
                         <div class="col-md-5 mb-3 mb-md-0">
                             <label class="form-label fw-semibold text-purple-dark">Nama Barang <span class="text-danger">*</span></label>
@@ -103,52 +103,54 @@
                                     <th width="15%" class="text-purple-dark">Satuan</th>
                                     <th width="20%" class="text-purple-dark">Kondisi <span class="text-danger">*</span></th>
                                     <th width="25%" class="text-purple-dark">Penanggung Jawab</th>
-                                    <th width="25%" class="text-purple-dark">Keterangan Tambahan</th>
+                                    <th width="25%" class="text-purple-dark">Ket/Spesifikasi Aset</th>
                                     <th width="5%"></th>
                                 </tr>
                             </thead>
                             <tbody id="containerInput">
-                                {{-- LOOPING DATA YANG SUDAH ADA --}}
+                                {{-- LOOPING DATA VARIAN (HANYA YG STOK > 0) --}}
                                 @foreach($variants as $index => $item)
-                                <tr class="input-row">
-                                    {{-- Hidden Input ID agar controller tahu ini update, bukan create --}}
-                                    <input type="hidden" name="details[{{ $index }}][id]" value="{{ $item->id }}">
-                                    
-                                    <td class="ps-3">
-                                        <input type="number" name="details[{{ $index }}][jumlah]" class="form-control" min="1" value="{{ $item->jumlah }}" required>
-                                    </td>
-                                    <td>
-                                        <select name="details[{{ $index }}][satuan]" class="form-select">
-                                            <option value="Unit" {{ $item->satuan == 'Unit' ? 'selected' : '' }}>Unit</option>
-                                            <option value="Pcs" {{ $item->satuan == 'Pcs' ? 'selected' : '' }}>Pcs</option>
-                                            <option value="Set" {{ $item->satuan == 'Set' ? 'selected' : '' }}>Set</option>
-                                            <option value="Buah" {{ $item->satuan == 'Buah' ? 'selected' : '' }}>Buah</option>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <select name="details[{{ $index }}][kondisi]" class="form-select bg-white" required>
-                                            <option value="Baik" {{ $item->kondisi == 'Baik' ? 'selected' : '' }}>✅ Baik</option>
-                                            <option value="Rusak Ringan" {{ $item->kondisi == 'Rusak Ringan' ? 'selected' : '' }}>⚠️ Rusak Ringan</option>
-                                            <option value="Rusak Berat" {{ $item->kondisi == 'Rusak Berat' ? 'selected' : '' }}>❌ Rusak Berat</option>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        {{-- INPUT PJ PER BARIS --}}
-                                        <input type="text" name="details[{{ $index }}][penanggung_jawab]" class="form-control" value="{{ $item->penanggung_jawab }}">
-                                    </td>
-                                    <td>
-                                        <input type="text" name="details[{{ $index }}][keterangan]" class="form-control" value="{{ $item->keterangan }}" placeholder="Ket.">
-                                    </td>
-                                    <td class="text-center">
-                                        {{-- Tombol Hapus (Tampilkan checkbox hapus atau hidden field delete) --}}
-                                        {{-- Sederhana: Kita biarkan user menghapus baris, nanti di controller kita sync --}}
-                                        @if($index > 0)
-                                        <button type="button" class="btn btn-sm btn-outline-danger border-0 rounded-circle" style="width:32px; height:32px;" onclick="removeRow(this)">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                        @endif
-                                    </td>
-                                </tr>
+                                    @if($item->jumlah > 0) {{-- Filter Stok 0 (Bug Fix) --}}
+                                    <tr class="input-row">
+                                        {{-- Hidden Input ID agar controller tahu ini update, bukan create --}}
+                                        <input type="hidden" name="details[{{ $index }}][id]" value="{{ $item->id }}">
+                                        
+                                        <td class="ps-3">
+                                            <input type="number" name="details[{{ $index }}][jumlah]" class="form-control" min="1" value="{{ $item->jumlah }}" required>
+                                        </td>
+                                        <td>
+                                            <select name="details[{{ $index }}][satuan]" class="form-select">
+                                                <option value="Unit" {{ $item->satuan == 'Unit' ? 'selected' : '' }}>Unit</option>
+                                                <option value="Pcs" {{ $item->satuan == 'Pcs' ? 'selected' : '' }}>Pcs</option>
+                                                <option value="Set" {{ $item->satuan == 'Set' ? 'selected' : '' }}>Set</option>
+                                                <option value="Buah" {{ $item->satuan == 'Buah' ? 'selected' : '' }}>Buah</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select name="details[{{ $index }}][kondisi]" class="form-select bg-white" required>
+                                                <option value="Baik" {{ $item->kondisi == 'Baik' ? 'selected' : '' }}>✅ Baik</option>
+                                                <option value="Rusak Ringan" {{ $item->kondisi == 'Rusak Ringan' ? 'selected' : '' }}>⚠️ Rusak Ringan</option>
+                                                <option value="Rusak Berat" {{ $item->kondisi == 'Rusak Berat' ? 'selected' : '' }}>❌ Rusak Berat</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            {{-- INPUT PJ PER BARIS --}}
+                                            <input type="text" name="details[{{ $index }}][penanggung_jawab]" class="form-control" value="{{ $item->penanggung_jawab }}">
+                                        </td>
+                                        <td>
+                                            <input type="text" name="details[{{ $index }}][keterangan]" class="form-control" value="{{ $item->keterangan }}" placeholder="Ket/Spesifikasi Aset">
+                                        </td>
+                                        <td class="text-center">
+                                            {{-- Tombol Hapus (Tampilkan checkbox hapus atau hidden field delete) --}}
+                                            {{-- Sederhana: Kita biarkan user menghapus baris, nanti di controller kita sync --}}
+                                            @if($index > 0)
+                                            <button type="button" class="btn btn-sm btn-outline-danger border-0 rounded-circle" style="width:32px; height:32px;" onclick="removeRow(this)">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    @endif
                                 @endforeach
                             </tbody>
                         </table>
@@ -197,7 +199,7 @@
 {{-- JAVASCRIPT DYNAMIC ROW --}}
 <script>
     // Mulai index dari jumlah data yang ada agar name array tidak bentrok
-    let rowIndex = {{ count($variants) }};
+    let rowIndex = {{ count($variants) + 1 }};
 
     function addRow() {
         const container = document.getElementById('containerInput');
@@ -230,7 +232,7 @@
                     <input type="text" name="details[${rowIndex}][penanggung_jawab]" class="form-control" required>
                 </td>
                 <td>
-                    <input type="text" name="details[${rowIndex}][keterangan]" class="form-control" placeholder="Ket.">
+                    <input type="text" name="details[${rowIndex}][keterangan]" class="form-control" placeholder="Ket/Spesifikasi Aset" required>
                 </td>
                 <td class="text-center">
                     <button type="button" class="btn btn-sm btn-outline-danger border-0 rounded-circle" style="width:32px; height:32px;" onclick="removeRow(this)">
