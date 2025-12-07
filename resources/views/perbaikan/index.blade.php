@@ -112,7 +112,14 @@
                             <small class="text-muted font-size-13 text-uppercase">PJ: {{ $item->penanggung_jawab }} </small>
                         </td>
                         <td>
-                            <div class="fw-bold text-purple-dark">{{ $item->aset->nama_barang ?? 'Dihapus' }}</div>
+                            <div class="fw-bold text-purple-dark">
+                                {{ $item->aset->nama_barang ?? 'Data Terhapus' }}
+                                
+                                {{-- Cek apakah aset sudah dihapus (soft deleted) --}}
+                                @if($item->aset && $item->aset->trashed())
+                                    <span class="badge bg-danger" style="font-size: 8px;">(Aset Dihapus)</span>
+                                @endif
+                            </div>
                             <small class="text-muted">{{ $item->aset->kode_aset ?? '-' }}</small>
                         </td>
                         <td class="text-center fw-bold text-danger">

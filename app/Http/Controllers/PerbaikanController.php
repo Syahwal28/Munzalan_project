@@ -40,10 +40,11 @@ class PerbaikanController extends Controller
         // 4. DATA UNTUK DROPDOWN
         // Ambil aset yang pernah masuk servis saja (dari tabel perbaikan) agar list tidak penuh sampah
         $idAsetServis = Perbaikan::distinct()->pluck('aset_id');
-        $dataAset = AsetModel::whereIn('id', $idAsetServis)
-                                         ->select('id', 'kode_aset', 'nama_barang')
-                                         ->orderBy('nama_barang')
-                                         ->get();
+        $dataAset = AsetModel::withTrashed()
+                                ->whereIn('id', $idAsetServis)
+                                ->select('id', 'kode_aset', 'nama_barang')
+                                ->orderBy('nama_barang')
+                                ->get();
 
         // Ambil PJ Service unik
         $dataPJ = Perbaikan::distinct()->pluck('penanggung_jawab');

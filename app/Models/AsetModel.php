@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class AsetModel extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     // Menghubungkan Model ini ke tabel 'tb_aset'
     protected $table = 'tb_aset';

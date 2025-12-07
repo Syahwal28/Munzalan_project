@@ -109,6 +109,10 @@
                                 </div>
                                 <div>
                                     <h6 class="mb-0 text-purple-dark">{{ $item->aset->nama_barang ?? 'Data Terhapus' }}</h6>
+                                    {{-- Cek apakah aset sudah dihapus (soft deleted) --}}
+                                    @if($item->aset && $item->aset->trashed())
+                                        <span class="badge bg-danger" style="font-size: 8px;">(Aset Terhapus)</span>
+                                    @endif
                                     <small class="text-muted">{{ $item->aset->kode_aset ?? '-' }}</small>
                                 </div>
                             </div>

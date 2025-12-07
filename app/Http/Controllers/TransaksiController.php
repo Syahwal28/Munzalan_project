@@ -40,10 +40,11 @@ class TransaksiController extends Controller
 
         // 5. Ambil Data Aset untuk Isi Dropdown Select2
         // Kita ambil ID, Kode, dan Nama untuk ditampilkan di pencarian
-        $dataAset = AsetModel::whereIn('id', $idAsetRusak)
-                                         ->select('id', 'kode_aset', 'nama_barang')
-                                         ->orderBy('nama_barang')
-                                         ->get();
+        $dataAset = AsetModel::withTrashed()
+                                ->whereIn('id', $idAsetRusak)
+                                ->select('id', 'kode_aset', 'nama_barang')
+                                ->orderBy('nama_barang')
+                                ->get();
 
         return view('transaksi.index', compact('transaksi', 'dataAset', 'dataPJ'));
     }
