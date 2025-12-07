@@ -35,7 +35,7 @@
         <form action="{{ route('assets.index') }}" method="GET">
             <div class="row g-3 align-items-end">
                 
-                {{-- SEARCH: KODE / NAMA ASET (SELECT2) --}}
+                {{-- SEARCH: No.Inv / NAMA ASET (SELECT2) --}}
                 <div class="col-md-3">
                     <label class="form-label small fw-bold text-muted">Cari Aset</label>
                         <select name="search" id="filterSearch" class="form-select border-start-0">
@@ -140,7 +140,7 @@
                 <thead class="bg-purple-light">
                     <tr>
                         <th width="5%" class="text-center text-purple-dark ps-4">No</th>
-                        <th class="text-purple-dark">Kode & Nama Aset</th>
+                        <th class="text-purple-dark">No.Inv & Nama Aset</th>
                         <th class="text-purple-dark">Kategori</th>
                         <th class="text-purple-dark">Lokasi & PJ</th>
                         <th class="text-center text-purple-dark">Stok</th>
@@ -162,7 +162,7 @@
                                 <div>
                                     <h6 class="mb-0 text-purple-dark">{{ $item->nama_barang }}</h6>
                                     <div class="d-flex align-items-center gap-2">
-                                        <small class="text-muted font-size-11 text-uppercase">Kode: <span class="text-purple fw-bold">{{ $item->kode_aset }}</span></small>
+                                        <small class="text-muted font-size-11 text-uppercase">No: <span class="text-purple fw-bold">{{ $item->kode_aset }}</span></small>
                                         <i class="fas fa-qrcode text-muted" style="font-size: 10px;" title="QR Code Tersedia"></i>
                                     </div>
                                 </div>

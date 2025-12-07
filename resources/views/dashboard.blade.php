@@ -341,7 +341,7 @@
                     </div>
                     <div class="small text-muted mt-2">
                         <i class="fas fa-info-circle text-purple me-1"></i>
-                        Persentase barang rusak dari total unit.
+                        Persentase aset rusak dari total unit.
                     </div>
                 </div>
 
@@ -401,7 +401,7 @@
                 <div>
                     <div class="section-title mb-1">Aktivitas Terakhir</div>
                     <div class="section-subtitle">
-                        5 Transaksi barang keluar terbaru.
+                        5 data aset rusak terbaru.
                     </div>
                 </div>
                 <a href="{{ route('transaksi.index') }}" class="btn btn-sm btn-light rounded-pill border fw-bold text-muted">
@@ -414,10 +414,10 @@
                     <thead>
                         <tr>
                             <th class="ps-4">Tanggal</th>
-                            <th>Barang</th>
+                            <th>Aset</th>
                             <th>Status / Alasan</th>
                             <th>Jumlah</th>
-                            <th class="text-end pe-4">Penerima</th>
+                            <th class="text-end pe-4">Penanggung Jawab</th>
                         </tr>
                     </thead>
                     <tbody>

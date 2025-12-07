@@ -175,8 +175,8 @@ class PerbaikanController extends Controller
                     'jenis_transaksi'   => 'Laporan Rusak',
                     'tanggal_keluar'    => $request->tgl_selesai,
                     'jumlah_keluar'     => $unitGagal,
-                    'penerima'          => 'Sistem (Gagal Servis)',
-                    'alasan'            => 'Gagal diperbaiki (Rusak Berat)',
+                    'penerima'          => $perbaikan->penanggung_jawab . ' (Gagal Servis)',
+                    'alasan'            => 'Gagal diperbaiki (Rusak Berat). Keterangan: ' . ($request->keterangan_perbaikan ?? '-'),
                     'biaya_tanggungan'  => 0,
                 ]);
             }

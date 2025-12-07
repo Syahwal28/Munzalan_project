@@ -117,9 +117,11 @@
                                 </div>
                             </div>
                         </td>
-                        <td>
+                        <td style="max-width: 100px;">
                             {{-- Kita gunakan kolom 'alasan' untuk menyimpan detail kerusakan --}}
-                            <span class="text-muted fst-italic">{{ $item->alasan }}</span>
+                            <div class="text-wrap text-break">
+                                <span class="text-muted fst-italic">{{ $item->alasan }}</span>
+                            </div>
                         </td>
                         <td class="text-center">
                             <span class="fw-bold text-danger fs-5">{{ $item->jumlah_keluar }}</span>

@@ -19,6 +19,9 @@
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 
+    {{-- SweetAlert2 CSS --}}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
     <style>
         /* --- SKEMA WARNA BARU (MUNZALAN PURPLE) --- */
         :root {
@@ -420,9 +423,10 @@
 
             <div style="padding: 20px 10px; margin-top: 30px;">
                 @auth
-                <form action="{{ route('logout') }}" method="POST">
+                <form id="logout-form" action="{{ route('logout') }}" method="POST">
                     @csrf
-                    <button type="submit" class="btn btn-logout w-100">
+                    {{-- Type submit jadi button type button untuk trigger SweetAlert --}}
+                    <button type="button" class="btn btn-logout w-100" onclick="confirmLogout()">
                         <i class="fas fa-sign-out-alt me-2"></i> Keluar
                     </button>
                 </form>
@@ -442,15 +446,6 @@
         </div>
 
         <div class="content-container">
-            {{-- Flash Message (Alert Sukses) --}}
-            @if(session('success'))
-                <div class="alert alert-success border-0 shadow-sm mb-4 d-flex align-items-center" style="background-color: #d1fae5; color: #065f46;">
-                    <i class="fas fa-check-circle me-2 fs-5"></i>
-                    <div>{{ session('success') }}</div>
-                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            @endif
-
             @yield('content')
         </div>
     </div>
@@ -463,6 +458,9 @@
     
     {{-- Select2 JS --}}
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    {{-- SWEETALERT 2 JS --}}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
         function toggleSidebar() {
@@ -481,14 +479,86 @@
             }
         });
 
-        // Inisialisasi Global untuk Select2 agar otomatis jalan di semua halaman
-        $(document).ready(function() {
-            $('.select2, .select2-filter').select2({
-                theme: 'bootstrap-5',
-                width: '100%',
-                allowClear: true
+        // --- FUNGSI KONFIRMASI LOGOUT ---
+        function confirmLogout() {
+            Swal.fire({
+                title: 'Akhiri Sesi?',
+                text: "Anda akan keluar dari aplikasi.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#883C8C',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Ya, Keluar!',
+                reverseButtons:true,
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById('logout-form').submit();
+                }
+            })
+        }
+
+        // --- GLOBAL: CEGAH DOUBLE SUBMIT & TAMPILKAN LOADING ---
+        $(document).on('submit', 'form', function() {
+            const form = $(this);
+            
+            // Cek apakah form valid (jika menggunakan validasi browser standar)
+            if (!form[0].checkValidity()) {
+                return false; // Jangan blokir jika form belum valid
+            }
+
+            // Cari tombol submit di dalam form tersebut
+            const btn = form.find('button[type="submit"]');
+
+            // Ubah tampilan tombol jadi disabled & loading (Visual Feedback)
+            if(btn.length > 0) {
+                const originalText = btn.html();
+                btn.prop('disabled', true);
+                btn.html('<i class="fas fa-spinner fa-spin me-2"></i> Memproses...');
+            }
+
+            // Tampilkan SweetAlert Loading (Memblokir Layar)
+            Swal.fire({
+                title: 'Mohon Tunggu',
+                text: 'Sedang memproses data...',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
             });
         });
+
+        // --- FLASH MESSAGE OTOMATIS (SWEETALERT) ---
+        @if(session('success'))
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: "{{ session('success') }}",
+                timer: 3000,
+                showConfirmButton: true,
+                confirmButtonColor: '#883C8C',
+                confirmButtonText: 'Ok',
+            });
+        @endif
+
+        @if(session('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal!',
+                text: "{{ session('error') }}",
+            });
+        @endif
+        
+        // Menangkap error validasi (opsional)
+        @if($errors->any())
+            Swal.fire({
+                icon: 'error',
+                title: 'Terjadi Kesalahan',
+                html: '<ul style="text-align: left;">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>',
+            });
+        @endif
     </script>
     
     {{-- STACK UNTUK SCRIPT TAMBAHAN PER HALAMAN --}}

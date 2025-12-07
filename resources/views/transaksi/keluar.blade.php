@@ -21,8 +21,8 @@
                     {{-- PILIH BARANG --}}
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Pilih Aset</label>
-                        <select name="aset_id" class="form-select select2" required>
-                            <option value="">-- Cari Barang --</option>
+                        <select name="aset_id" class="form-select select2-init" required>
+                            <option value="">-- Cari Aset --</option>
                             @foreach($assets as $aset)
                                 <option value="{{ $aset->id }}">
                                     {{ $aset->kode_aset }} - {{ $aset->nama_barang }} ({{ $aset->kondisi }} - Stok: {{ $aset->jumlah }})
@@ -74,4 +74,16 @@
         </div>
     </div>
 </div>
+<!-- Script untuk select2 -->
+@push('scripts')
+<script>
+    $(document).ready(function() {
+        $('.select2-init').select2({
+            theme: 'bootstrap-5',
+            allowClear: true,
+            width: '100%'
+        });
+    });
+</script>
+@endpush
 @endsection
